@@ -92,63 +92,65 @@ l5:
     ret
 Compare endp
 
-WndProc     proc    stdcall hwdn:HWND, message:UINT, wParam:WPARAM, lParam:LRARAM
+WndProc     proc    stdcall hwnd, message, wParam, lParam
     local       ps:PAINTSTRUCT, hdc:HDC
     mov         eax, message
     .IF eax==WM_CREATE
-        invoke  CreateWindow, offset edit, 0, WS_CHILD OR WS_VISIBLE OR SS_CENTERIMAGE OR SS_CENTER OR WS_BORDER, 10, 10, 300, 20, hwnd, 10, hInst, 0
+        invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset edit, 0, WS_CHILD OR WS_VISIBLE OR SS_CENTERIMAGE OR SS_CENTER OR WS_BORDER, 10, 10, 300, 20, hwnd, 10, hInst, 0
         mov     hEdit1, eax
-        invoke  CreateWindow, offset edit, 0, WS_CHILD OR WS_VISIBLE OR SS_CENTERIMAGE OR SS_CENTER OR WS_BORDER, 10, 50, 300, 20, hwnd, 20, hInst, 0
+        invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset edit, 0, WS_CHILD OR WS_VISIBLE OR SS_CENTERIMAGE OR SS_CENTER OR WS_BORDER, 10, 50, 300, 20, hwnd, 20, hInst, 0
         mov     hEdit2, eax
-        CreateWindow, offset button, offset btnMsg, WS_CHILD OR WS_VISIBLE OR BS_FLAT OR WS_BORDER, 100, 90, 100, 20, hwnd, 30, hInst, 0
+        invoke  CreateWindowEx, 0, offset button, offset btnMsg, WS_CHILD OR WS_VISIBLE OR BS_FLAT OR WS_BORDER, 100, 90, 100, 20, hwnd, 30, hInst, 0
         mov     hBtn, eax
     .ELSEIF eax==WM_PAINT
-        invoke  BeginPaint, hwnd, offset ps
+        invoke  BeginPaint, hwnd, addr ps
         mov     hdc, eax
-        invoke  EndPaint, hwnd, offset ps
-    .ELSEIF eax==WM_DESTORY
+        invoke  EndPaint, hwnd, addr ps
+    .ELSEIF eax==WM_DESTROY
         invoke  PostQuitMessage, 0
     .ELSEIF eax==WM_COMMAND
         mov     eax, wParam
         .IF eax==30
-            invoke compare
+            invoke Compare
         .ENDIF
     .ENDIF
     invoke      DefWindowProc, hwnd, message, wParam, lParam
 WndProc endp
 
 main    proc
-    local   wndClass:WNDCLASS, hwnd:HWND, msg:MSG
-
-    mov     wndClass.style, CS_HREDRAW OR CS_VREDRAW
-    mov     wndClass.lpfnWndProc, offset WndProc
-    mov     wndClass.cbClsExtra, 0
-    mov     wndClass.cbWndExtra, 0
+    local   wndClass:WNDCLASS, hwnd:HWND, msg:MSG, h:dword
     invoke  GetModuleHandle, 0
+    mov     h, eax
+    mov     hInst, eax
+
+    invoke  RtlZeroMemory, addr wndClass, sizeof wndClass
+    mov     wndClass.style, CS_HREDRAW or CS_VREDRAW
+    mov     wndClass.lpfnWndProc, offset WndProc
+    mov     eax, h
     mov     wndClass.hInstance, eax
     invoke  LoadIcon, 0, IDI_APPLICATION
     mov     wndClass.hIcon, eax
     invoke  LoadCursor, 0, IDC_ARROW
     mov     wndClass.hCursor, eax
-    invoke  GetStockObject, WHITE_BRUSH
-    mov     wndClass.hbrBackground, eax
-    mov     wndClass.lpszMenuName, 0
+    mov     wndClass.hbrBackground, COLOR_WINDOW + 1
     mov     wndClass.lpszClassName, offset mainTit
 
-    invoke  RegisterClass, offset wndClass
-    invoke  CreateWindow, offset mainTit, offset mainTit, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 340, 180, 0, 0, hInstance, 0
+    invoke  RegisterClass, addr wndClass
+    invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset mainTit, offset mainTit, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 340, 180, 0, 0, wndClass.hInstance, 0
     mov     hwnd, eax
 
-    invoke  ShowWindow, hwnd, 0
+    invoke  ShowWindow, hwnd, SW_SHOWNORMAL
     invoke  UpdateWindow, hwnd
 
 W1:
-    invoke  GetMessage, offset msg, 0, 0, 0
+    invoke  GetMessage, addr msg, 0, 0, 0
     cmp     eax, 0
     jz      W2
-    invoke  TranslateMessage, offset msg
-    invoke  DispatchMessage, offset msg      
+    invoke  TranslateMessage, addr msg
+    invoke  DispatchMessage, addr msg      
     jmp     W1
 W2:
-    ret     msg.wParam
+    invoke  ExitProcess, 0
+    ret
 main endp
+end main
