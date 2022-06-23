@@ -23,15 +23,16 @@ fopen       PROTO C :ptr sbyte, :ptr dword
     edit        byte    "edit", 0
     button      byte    "button", 0
     btnMsg      byte    "START", 0
-    mainTit     byte    "Comparator", 0
+    mainTitle   byte    "Comparator", 0
+    CaptionName byte    "Comparator", 0
     inCtrl      byte    "%s%s", 0
     outCtrl     byte    "line %d", 0ah, 0
     fileMode    byte    "r", 0
     ErrMsg1     byte    "Failed to open the source file 1!", 0
     ErrMsg2     byte    "Failed to open the source file 2!", 0
-    ErrMsgTit   byte    "Error Messaga", 0
+    ErrMsgName  byte    "Error Messaga", 0
     succMsg     byte    "Two source files are same.", 0ah, 0
-    succMsgTit  byte    "Reuslt", 0
+    succMsgName byte    "Reuslt", 0
     tmp         byte    10 DUP(0)
     src1        dword   0
     src2        dword   0
@@ -45,112 +46,111 @@ fopen       PROTO C :ptr sbyte, :ptr dword
     hEdit1      dword   0
     hEdit2      dword   0
     hBtn        dword   0
-    hInst       dword   0
+    hApp        dword   0
+    hWin        dword   0
 
 
 .code
 Compare     proc
-    invoke      GetWindowText, hEdit1, str1, 512
-    invoke      GetWindowText, hEdit2, str2, 512
-    invoke      fopen, offset str1, offset fileMode
-    mov         src1, eax
-    cmp         eax, 0
-    jnz         l1
-    invoke      MessageBox, 0, ErrMsg1, ErrMsgTit, MB_OK
-    ret
+            invoke      GetWindowText, hEdit1, str1, 512
+            invoke      GetWindowText, hEdit2, str2, 512
+            invoke      fopen, offset str1, offset fileMode
+            mov         src1, eax
+            cmp         eax, 0
+            jnz         l1
+            invoke      MessageBox, 0, ErrMsg1, ErrMsgName, MB_OK
+            ret
 l1:
-    invoke      fopen, offset str2, offset fileMode
-    mov         src2, eax
-    cmp         eax, 0
-    jnz         l2
-    invoke      MessageBox, 0, ErrMsg2, ErrMsgTit, MB_OK
-    ret
+            invoke      fopen, offset str2, offset fileMode
+            mov         src2, eax
+            cmp         eax, 0
+            jnz         l2
+            invoke      MessageBox, 0, ErrMsg2, ErrMsgName, MB_OK
+            ret
 l2:
-    invoke      fgets, offset str1, 512, src1
-    mov         res1, eax
-    invoke      fgets, offset str2, 512, src2
-    mov         res2, eax
-    or          eax, res1
-    cmp         eax, 0
-    jz          l4
-    invoke      strcmp, offset str1, offset str2
-    cmp         eax, 0
-    jz          l3
-    invoke      sprintf, offset tmp, offset outCtrl, line
-    invoke      strcat, offset result, offset tmp
-    mov         flag, 1
+            invoke      fgets, offset str1, 512, src1
+            mov         res1, eax
+            invoke      fgets, offset str2, 512, src2
+            mov         res2, eax
+            or          eax, res1
+            cmp         eax, 0
+            jz          l4
+            invoke      strcmp, offset str1, offset str2
+            cmp         eax, 0
+            jz          l3
+            invoke      sprintf, offset tmp, offset outCtrl, line
+            invoke      strcat, offset result, offset tmp
+            mov         flag, 1
 l3:
-    inc         line
-    jmp         l2
+            inc         line
+            jmp         l2
 l4:
-    mov         al, flag
-    cmp         al, 0
-    jnz         l5
-    invoke      sprintf, offset result, offset succMsg
+            mov         al, flag
+            cmp         al, 0
+            jnz         l5
+            invoke      sprintf, offset result, offset succMsg
 l5:
-    invoke      MessageBox, 0, result, succMsgTit, MB_OK
-    ret
+            invoke      MessageBox, 0, result, succMsgName, MB_OK
+            ret
 Compare endp
 
-WndProc     proc    stdcall hwnd, message, wParam, lParam
-    local       ps:PAINTSTRUCT, hdc:HDC
-    mov         eax, message
-    .IF eax==WM_CREATE
-        invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset edit, 0, WS_CHILD OR WS_VISIBLE OR SS_CENTERIMAGE OR SS_CENTER OR WS_BORDER, 10, 10, 300, 20, hwnd, 10, hInst, 0
-        mov     hEdit1, eax
-        invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset edit, 0, WS_CHILD OR WS_VISIBLE OR SS_CENTERIMAGE OR SS_CENTER OR WS_BORDER, 10, 50, 300, 20, hwnd, 20, hInst, 0
-        mov     hEdit2, eax
-        invoke  CreateWindowEx, 0, offset button, offset btnMsg, WS_CHILD OR WS_VISIBLE OR BS_FLAT OR WS_BORDER, 100, 90, 100, 20, hwnd, 30, hInst, 0
-        mov     hBtn, eax
-    .ELSEIF eax==WM_PAINT
-        invoke  BeginPaint, hwnd, addr ps
-        mov     hdc, eax
-        invoke  EndPaint, hwnd, addr ps
-    .ELSEIF eax==WM_DESTROY
-        invoke  PostQuitMessage, 0
-    .ELSEIF eax==WM_COMMAND
-        mov     eax, wParam
-        .IF eax==30
-            invoke Compare
-        .ENDIF
-    .ENDIF
-    invoke      DefWindowProc, hwnd, message, wParam, lParam
+WndProc     proc        hwnd, message, wParam, lParam
+            local       ps:PAINTSTRUCT, hdc:HDC
+            mov         eax, message
+            .IF eax==WM_CREATE
+                invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset edit, 0, WS_CHILD OR WS_VISIBLE OR SS_CENTERIMAGE OR SS_CENTER OR WS_BORDER, 10, 10, 300, 20, hwnd, 10, hApp, 0
+                mov     hEdit1, eax
+                invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset edit, 0, WS_CHILD OR WS_VISIBLE OR SS_CENTERIMAGE OR SS_CENTER OR WS_BORDER, 10, 50, 300, 20, hwnd, 20, hApp, 0
+                mov     hEdit2, eax
+                invoke  CreateWindowEx, NULL, offset button, offset btnMsg, WS_CHILD OR WS_VISIBLE OR BS_FLAT OR WS_BORDER, 100, 90, 100, 20, hwnd, 30, hApp, 0
+                mov     hBtn, eax
+            .ELSEIF eax==WM_PAINT
+                invoke  BeginPaint, hwnd, addr ps
+                mov     hdc, eax
+                invoke  EndPaint, hwnd, addr ps
+            .ELSEIF eax==WM_DESTROY
+                invoke  PostQuitMessage, 0
+            .ELSEIF eax==WM_COMMAND
+                mov     eax, wParam
+                .IF eax==30
+                    invoke Compare
+                .ENDIF
+            .ENDIF
+            invoke      DefWindowProc, hwnd, message, wParam, lParam
 WndProc endp
 
-main    proc
-    local   wndClass:WNDCLASS, hwnd:HWND, msg:MSG, h:dword
-    invoke  GetModuleHandle, 0
-    mov     h, eax
-    mov     hInst, eax
+main        proc
+            local       wndClass:WNDCLASSEX
+            local       msg:MSG
+            invoke      GetModuleHandle, NULL
+            mov         hApp, eax
 
-    invoke  RtlZeroMemory, addr wndClass, sizeof wndClass
-    mov     wndClass.style, CS_HREDRAW or CS_VREDRAW
-    mov     wndClass.lpfnWndProc, offset WndProc
-    mov     eax, h
-    mov     wndClass.hInstance, eax
-    invoke  LoadIcon, 0, IDI_APPLICATION
-    mov     wndClass.hIcon, eax
-    invoke  LoadCursor, 0, IDC_ARROW
-    mov     wndClass.hCursor, eax
-    mov     wndClass.hbrBackground, COLOR_WINDOW + 1
-    mov     wndClass.lpszClassName, offset mainTit
+            invoke      RtlZeroMemory, addr wndClass, sizeof wndClass
 
-    invoke  RegisterClass, addr wndClass
-    invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset mainTit, offset mainTit, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 340, 180, 0, 0, wndClass.hInstance, 0
-    mov     hwnd, eax
+            invoke      LoadCursor, 0, IDC_ARROW
+            mov         wndClass.hCursor, eax
+            mov         eax, hApp
+            mov         wndClass.hInstance, eax
+            mov         wndClass.cbSize, sizeof WNDCLASSEX
+            mov         wndClass.style, CS_HREDRAW or CS_VREDRAW
+            mov         wndClass.lpfnWndProc, offset WndProc
+            mov         wndClass.hbrBackground, COLOR_WINDOW + 1
+            mov         wndClass.lpszClassName, offset mainTitle
 
-    invoke  ShowWindow, hwnd, SW_SHOWNORMAL
-    invoke  UpdateWindow, hwnd
+            invoke      RegisterClassEx, addr wndClass
+            invoke      CreateWindowEx, WS_EX_CLIENTEDGE, offset mainTitle, offset CaptionName, WS_OVERLAPPEDWINDOW, 200, 200, 400, 200, NULL, NULL, hApp, NULL
+            mov         hWin, eax
 
-W1:
-    invoke  GetMessage, addr msg, 0, 0, 0
-    cmp     eax, 0
-    jz      W2
-    invoke  TranslateMessage, addr msg
-    invoke  DispatchMessage, addr msg      
-    jmp     W1
-W2:
-    invoke  ExitProcess, 0
-    ret
+            invoke      ShowWindow, hWin, SW_SHOWNORMAL
+            invoke      UpdateWindow, hWin
+
+MAIN1:
+            invoke      GetMessage, addr msg, NULL, 0, 0
+            invoke      TranslateMessage, addr msg
+            invoke      DispatchMessage, addr msg
+            jmp         MAIN1
+
+            invoke      ExitProcess, NULL
+            ret
 main endp
 end main

@@ -57,20 +57,21 @@ playerEnergy	word	1
 playerX			word	48
 playerY			word	159
 
-; higher 8 bit describe enemy level and id, lower for current hp? Yes
-; There are 3 types of enemy, like these
+; HP represents enemy's level
+; When enemy is hitted, its hp and level will both drop down 1 point
+; There are 3 types of enemy, like these ones
 ; small one
 ; V
-; HP 1 00000001 00000001
+; HP 1 00000000 00000001
 ; middle one
 ; \+/
 ;  V
-; HP 2 00000010 00000010
+; HP 2 00000000 00000010
 ; large one
 ; \---/
 ;  \+/
 ;   V
-; HP 3 00000011 00000011
+; HP 3 00000000 00000011
 ; They all have a core in their head, just like V
 ; Also, V is their position
 enemyMap		word	15360 dup(0), 0
@@ -120,9 +121,94 @@ cursorXY proc uses eax, px :dword, py: dword
 			invoke	SetConsoleCursorPosition, handle, addr pos
 cursorXY endp
 
+; position check && hit check
+checkBPositionAndEHit proc uses x:dword,y:dword
+			local 	off:dword
+			mov		eax, x
+			cmp		eax, 0
+			jb		CAHEND
+			cmp		eax, 160
+			jae		CAHEND
+			mov		eax, y
+			cmp		eax, 0
+			jb		CAHEND
+			cmp		eax, 96
+			jae		CAHEND
+			mov		eax, x
+			mul		96
+			add		eax, y
+			mul		16
+			mov		off, eax
+			movzx	eax, enemyMap[eax]
+			cmp		eax, 0
+			jz		CAHEND
+			movzx	eax, playerBulletMap[off]
+			cmp		eax, 0
+			jz		CAHEND
+			dec		enemyMap[off]	
+CAHEND:
+			ret
+checkBPositionAndEHit endp
+
+
+
 ; hit check
-checkEnemyHit proc
-			mov		cx, _HEIGHT
+checkEnemyHit proc uses eax,edx
+			local	i:dword, j:dword, off:dword
+			mov		i, 0
+			mov		j, 0
+CEH1:
+			mov		eax, i
+			cmp		eax, 159
+			jz		CEH3
+			mul		96
+			add		j
+			mul		16
+			mov		off, eax
+			mov		ax, enemyMap[eax]
+			cmp		ax, 0
+			jz		CEH2
+			cmp		ax, 1
+			jz		HP1
+			cmp		ax, 2
+			jz		HP2
+			cmp		ax, 3
+			jz		HP3
+HP3:
+			mov		eax, i
+			sub		eax, 2
+			mov		ebx, j
+			sub		ebx, 2
+			invoke	checkBPositionAndEHit, eax, ebx
+			inc		ebx
+			invoke	checkBPositionAndEHit, eax, ebx
+			inc		ebx
+			invoke	checkBPositionAndEHit, eax, ebx
+			inc		ebx
+			invoke	checkBPositionAndEHit, eax, ebx
+			inc		ebx
+			invoke	checkBPositionAndEHit, eax, ebx
+HP2:
+			mov		eax, i
+			sub		eax, 1
+			mov		ebx, j
+			sub		ebx, 1
+			invoke	checkBPositionAndEHit, eax, ebx
+			inc		ebx
+			invoke	checkBPositionAndEHit, eax, ebx
+			inc		ebx
+			invoke	checkBPositionAndEHit, eax, ebx
+HP1:
+			invoke	checkBPositionAndEHit, i, j
+CEH2:
+			inc		j
+			mov		eax, j
+			cmp		eax, 96
+			jnz		CEH1
+			inc		i
+			mov		j, 0
+			jmp		CEH1
+CEH3:
 			ret
 checkEnemyHit endp
 
@@ -132,7 +218,7 @@ checkPlayerHit proc
 checkPlayerHit endp
 
 ; randomly generate enemy bullet(optional)
-generateEBullet proc uses eax, ebx, edx
+generateEBullet proc uses eax,ebx,edx
 			local	randomNum : dword, i : dword, j : dword, off : dword
 			mov		i, 0
 			mov		j, 0
@@ -160,7 +246,7 @@ GEB1:
 			mul		96
 			add		eax, j
 			mul		16
-			mov		enemyBulletMap[eax], 1
+			movzx	enemyBulletMap[eax], 1
 GEB2:
 			inc		j
 			mov		eax, j
