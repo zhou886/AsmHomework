@@ -151,7 +151,7 @@ main        proc
             mov         wndClass.hCursor, eax
 
             invoke      RegisterClassEx, addr wndClass
-            invoke      CreateWindowEx, WS_EX_CLIENTEDGE, offset AppName, offset AppName, WS_OVERLAPPEDWINDOW, 200, 200 ,400 ,200, NULL, NULL, hApp, NULL
+            invoke      CreateWindowEx, WS_EX_CLIENTEDGE, offset AppName, offset AppName, WS_OVERLAPPEDWINDOW, 0, 0 ,400 ,200, NULL, NULL, hApp, NULL
             mov         hWin, eax
             invoke      ShowWindow, hWin, SW_SHOWNORMAL
             invoke      UpdateWindow, hWin

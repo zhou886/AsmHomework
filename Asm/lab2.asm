@@ -50,7 +50,7 @@ TriFuncCalculate        PROTO :dword
     dRes        real8       0.
     dConst1     real8       1.0
     dConst10    real8       10.0
-    dERR        real8       1.0e-18
+    dERR        real8       1.0e-8
     iOpr        dword       0
     iNum1       dword       0
     iNum2       dword       0
@@ -72,7 +72,7 @@ TriFuncCalculate        PROTO :dword
     strAppName  byte        'Calculator', 0
 
 .code
-isDigit proc uses eax, chr:byte
+isDigit proc chr:byte
             movzx   eax, chr
             cmp     eax, 48 ;'0'
             jb      ID1
@@ -85,7 +85,7 @@ ID1:
             ret
 isDigit     endp
 
-isDot proc uses eax, chr:byte
+isDot proc chr:byte
             movzx   eax, chr
             cmp     eax, 46 ;'.'
             jnz     ID2
@@ -96,7 +96,7 @@ ID2:
             ret
 isDot       endp
 
-isOperator  proc    uses eax, chr:byte
+isOperator proc chr:byte
             invoke  strchr, offset strConstOpr, chr
             cmp     eax, 0
             jz      IO1
@@ -127,6 +127,7 @@ ArrayToNumber proc uses eax ecx, num:ptr byte
             fldz
             fst     dRes
             fst     ex
+            fst     tmp
 ATN1:
             mov     ecx, i
             cmp     ecx, len
@@ -159,7 +160,10 @@ ATN3:
             fld     ex
             fldz
             fcom
+            fnstsw  ax
+            sahf
             jz      ATN4
+            finit
             fld     tmp
             fmul    ex
             fadd    dRes
@@ -169,9 +173,11 @@ ATN3:
             fstp    ex
             jmp     ATN5
 ATN4:
+            finit
             fld     dRes
             fmul    dConst10
             fadd    tmp
+            fstp    dRes
 ATN5:
             inc     i
             jmp     ATN1
@@ -254,9 +260,6 @@ TriFuncCalculate proc uses eax ebx edx, num:dword
             jnz     TFC1
             mov     eax, num
             sub     eax, 38
-            mov     edx, 0
-            mov     ebx, 4
-            div     ebx
             add     eax, 6
             mov     iOpr, eax
             invoke  Calculate
@@ -268,9 +271,6 @@ TFC1:
             invoke  Calculate
             mov     eax, num
             sub     eax, 38
-            mov     edx, 0
-            mov     ebx, 4
-            div     ebx
             add     eax, 6
             mov     iOpr, eax
             invoke  Calculate
@@ -325,8 +325,8 @@ ANTS1:
             cmp     eax, 0
             jnz     ANTS2
             mov     eax, iOpr
-            cmp     eax, 1
-            jnz     ANTS2
+            cmp     eax, 0
+            jz     ANTS2
             mov     iNum2, 1
 ANTS2:
             mov     eax, num
@@ -371,7 +371,7 @@ AOTS1:
             mov     eax, opr
             inc     eax
             mov     iOpr, eax
-            invoke  GetWindowText, hStatic, strStaticBuffer, 128
+            invoke  GetWindowText, hStatic, offset strStaticBuffer, 128
             invoke  strlen, offset strStaticBuffer
             mov     len, eax
             mov     eax, opr
@@ -483,7 +483,9 @@ C4:
             fld     dNum2
             fldz
             fcom
-            jz      DIVZERO
+            fnstsw  ax
+            sahf
+            je      DIVZERO
             finit
             fld     dNum1
             fdiv    dNum2
@@ -500,6 +502,8 @@ C5:
             fld     dNum2
             fldz
             fcom
+            fnstsw  ax
+            sahf
             jz      DIVZERO
             finit
             fld     dNum2
@@ -531,7 +535,10 @@ C8:
             jnz     C9
             finit
             fld     dNum1
-            fptan
+            fcos
+            fld     dNum1
+            fsin
+            fdiv    st(0), st(1)
             fstp    dNum1
 C9:
             mov     iOpr, 0
@@ -542,13 +549,15 @@ C9:
             fst     dNum2
             invoke  memset, offset strStaticBuffer, 0, sizeof strStaticBuffer
             finit
-            fld1
             fld     dNum1
-            fprem
-            fsub    dNum1
+            frndint
+            fld     dNum1
+            fsub
             fabs
             fcom    dERR
-            ja      C10
+            fnstsw  ax
+            sahf
+            ja     C10
             mov     iNumDot1, 0
             invoke  sprintf, offset strStaticBuffer, offset OutFormat0, dNum1
             jmp     C11
@@ -557,12 +566,13 @@ C10:
             invoke  sprintf, offset strStaticBuffer, offset OutFormat5, dNum1
 C11:
             invoke  strcpy, offset strNum1, offset strStaticBuffer
-            invoke  SetWindowText, hStatic, strStaticBuffer
+            invoke  SetWindowText, hStatic, offset strStaticBuffer
             ret
 Calculate endp
 
-WinProc proc uses eax ebx edx, hWnd, msg, wParam, lParam
+WinProc proc hWnd, msg, wParam, lParam
             local   ps:PAINTSTRUCT
+            local   rect:RECT
             local   hdc:HDC
             local   i:dword
             local   x:dword
@@ -625,7 +635,7 @@ WP3:
             mov     edx, 0
             mov     ebx, 5
             div     ebx
-            mov     ebx, 50
+            mov     ebx, 60
             mul     ebx
             add     eax, 200
             mov     y, eax
@@ -688,29 +698,26 @@ NUMBER:
             cmp     eax, 0
             jb      RETURN
             cmp     eax, 9
-            ja      NUMBER
+            ja      OPERATOR
             invoke  AppendNumberToStatic, eax
             jmp     RETURN
 OPERATOR:
             mov     eax, wParam
-            cmp     eax, 26
-            ja      OPERATOR
+            cmp     eax, 14
+            ja      DOT
             sub     eax, 10
-            mov     edx, 0
-            mov     ebx, 4
-            div     ebx
             invoke  AppendOperatorToStatic, eax
             jmp     RETURN
 DOT:
             mov     eax, wParam
-            cmp     eax, 30
+            cmp     eax, 15
             jnz     CAL
             invoke  AppendDotToNumber
             jmp     RETURN
 CAL:
             mov     eax, wParam
-            cmp     eax, 34
-            jnz     OPERATOR
+            cmp     eax, 16
+            jnz     TRIFUN
             invoke  Calculate
             jmp     RETURN
 TRIFUN:
@@ -737,35 +744,36 @@ RETURN:
             ret
 WinProc endp
 
-main proc
-            local   wndClass:WNDCLASSEX
-            local   msg:MSG
-            invoke  RtlZeroMemory, addr wndClass, sizeof wndClass
-            invoke  GetModuleHandle, NULL
-            mov     hApp, eax
-            mov     wndClass.hInstance, eax
-            mov     wndClass.cbSize, sizeof WNDCLASSEX
-            mov     wndClass.style, CS_HREDRAW or CS_VREDRAW
-            mov     wndClass.lpfnWndProc, offset WinProc
-            mov     wndClass.hbrBackground, COLOR_WINDOW+1
-            mov     wndClass.lpszClassName, offset strAppName
-            invoke  LoadCursor, 0, IDC_ARROW
-            mov     wndClass.hCursor, eax
+main        proc
+            local       wndClass:WNDCLASSEX
+            local       msg:MSG            
+            invoke      RtlZeroMemory, addr wndClass, sizeof wndClass
+            invoke      GetModuleHandle, NULL
+            mov         hApp, eax
+            mov         wndClass.hInstance, eax
+            mov         wndClass.cbSize, sizeof WNDCLASSEX
+            mov         wndClass.style, CS_HREDRAW or CS_VREDRAW
+            mov         wndClass.lpfnWndProc, offset WinProc
+            mov         wndClass.hbrBackground, COLOR_WINDOW + 1
+            mov         wndClass.lpszClassName, offset strAppName
+            invoke      LoadCursor, 0, IDC_ARROW
+            mov         wndClass.hCursor, eax
 
-            invoke  RegisterClassEx, addr wndClass
-            invoke  CreateWindowEx, WS_EX_CLIENTEDGE, offset strAppName, offset strAppName, WS_OVERLAPPEDWINDOW, 200, 200, 335, 420, NULL, NULL, hApp, NULL
-            mov     hWin, eax
-            invoke  ShowWindow, hWin, SW_SHOWNORMAL
-            invoke  UpdateWindow, hWin
+            invoke      RegisterClassEx, addr wndClass
+            invoke      CreateWindowEx, WS_EX_CLIENTEDGE, offset strAppName, offset strAppName, WS_OVERLAPPEDWINDOW, 0, 0 ,335, 420, NULL, NULL, hApp, NULL
+            mov         hWin, eax
+            invoke      ShowWindow, hWin, SW_SHOWNORMAL
+            invoke      UpdateWindow, hWin
+
 MAIN1:
-            invoke  GetMessage, addr msg, NULL, 0, 0
-            cmp     eax, 0
-            jz      MAIN2
-            invoke  TranslateMessage, addr msg
-            invoke  DispatchMessage, addr msg
-            jmp     MAIN1
+            invoke      GetMessage, addr msg, NULL, 0, 0
+            cmp         eax, 0
+            jz          MAIN2
+            invoke      TranslateMessage, addr msg
+            invoke      DispatchMessage, addr msg
+            jmp         MAIN1
 MAIN2:
-            invoke  ExitProcess, NULL
+            invoke      ExitProcess, NULL
             ret
-main endp
-end main
+main        endp
+end         main
